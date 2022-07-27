@@ -101,9 +101,6 @@ class Org:
         global GENOME_LENGTH
         self.genome = [random.uniform(-1,1)/50 for _ in range(GENOME_LENGTH)]
 
-    def __repr__(self):
-        return str(self.fitness)
-
     def make_mutated_copy(self):
         global GENOME_LENGTH,MUTATION_RATE
         child = Org()
