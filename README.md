@@ -1,1 +1,5 @@
 # FaceGen
+
+## Dependencies
+matplotlib
+numpy
