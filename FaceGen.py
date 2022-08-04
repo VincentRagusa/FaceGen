@@ -1,3 +1,4 @@
+from configparser import Interpolation
 import copy
 import random
 from os import mkdir, path
@@ -116,33 +117,44 @@ class Org:
 def recombine(org1, org2):
     child = Org()
     #single cut crossover
-    # cut = random.randint(0,GENOME_LENGTH-1)
-    # child.genome = copy.deepcopy(org1.genome[:cut]) + copy.deepcopy(org2.genome[cut:])
+    cut = random.randint(0,GENOME_LENGTH-1)
+    child.genome = copy.deepcopy(org1.genome[:cut]) + copy.deepcopy(org2.genome[cut:])
 
     #all-sites crossover
-    child.genome = []
-    for site in range(GENOME_LENGTH):
-        if random.random() <= 0.5:
-            child.genome.append(org1.genome[site])
-        else:
-            child.genome.append(org2.genome[site])
+    # child.genome = []
+    # for site in range(GENOME_LENGTH):
+    #     if random.random() <= 0.5:
+    #         child.genome.append(org1.genome[site])
+    #     else:
+    #         child.genome.append(org2.genome[site])
+
+    
     return child
 
 
 def imageTournament(org1,org2):
-    global S, Vh, SHAPE, logdata
+    global S, Vh, SHAPE, logdata, aveFace
     img1 = np.reshape(np.array(np.clip(np.dot(org1.genome, np.dot(np.diag(S[:GENOME_LENGTH]),Vh[:GENOME_LENGTH,:])),0,1)),SHAPE) #TODO: the need to manually truncate is obsolete
     img2 = np.reshape(np.array(np.clip(np.dot(org2.genome, np.dot(np.diag(S[:GENOME_LENGTH]),Vh[:GENOME_LENGTH,:])),0,1)),SHAPE)
+    imgAve = np.reshape(np.array(np.clip(np.dot(aveFace, np.dot(np.diag(S[:GENOME_LENGTH]),Vh[:GENOME_LENGTH,:])),0,1)),SHAPE)
+
     f, axarr = plt.subplots(2,2)
     f.set_size_inches((10, 10))
-    axarr[0][0].imshow(img1,interpolation="quadric")
-    axarr[0][1].imshow(img2,interpolation="quadric")
-    axarr[1][0].plot(logdata)
+
+    axarr[0][0].set_title("Rate of Change")
+    axarr[0][0].plot(logdata)
+    axarr[0][1].set_title("Population Average")
+    axarr[0][1].imshow(imgAve, interpolation="quadric")
+    axarr[1][0].set_title("Left Choice")
+    axarr[1][0].imshow(img1, interpolation="quadric")
+    axarr[1][1].set_title("Right Choice")
+    axarr[1][1].imshow(img2, interpolation="quadric")
+    
     callback = Index()
-    axprev = plt.axes([0.7, 0.05, 0.1, 0.075])
-    axnext = plt.axes([0.81, 0.05, 0.1, 0.075])
-    axexit = plt.axes([0.1, 0.05, 0.11, 0.075])
-    axdump = plt.axes([0.22, 0.05, 0.2, 0.075])
+    axprev = plt.axes([0.7, 0.005, 0.1, 0.075]) #left start, bottom start, width, height
+    axnext = plt.axes([0.81, 0.005, 0.1, 0.075])
+    axexit = plt.axes([0.1, 0.005, 0.11, 0.075])
+    axdump = plt.axes([0.22, 0.005, 0.2, 0.075])
     bnext = Button(axnext, 'Right')
     bnext.on_clicked(callback.right)
     bprev = Button(axprev, 'Left')
@@ -151,6 +163,7 @@ def imageTournament(org1,org2):
     bexit.on_clicked(callback.exit)
     bdump = Button(axdump,'Dump Population to Disk')
     bdump.on_clicked(callback.dump)
+
     plt.show()
     return callback.choice
 
@@ -159,9 +172,7 @@ def loadPopulation():
     global SHAPE, GENOME_LENGTH
     if path.exists("./population.p"):
         population = load(open("population.p","rb"))
-
     else:
-        mkdir("./DUMP3")
         population = [Org() for _ in range(POP_SIZE)]
     return population
 
@@ -180,6 +191,7 @@ if __name__ == "__main__":
     mutants_kept = []
     generation = 0
     logdata = []
+    aveFace = np.mean([org.genome for org in population], axis=0)
 
     while True:
         generation += 1
@@ -232,7 +244,8 @@ if __name__ == "__main__":
                 population[selectionIndex] = testGroup[1-shuffle]
                 mutants_kept.append(shuffle)
 
-        if len(mutants_kept) == 10:
-            logdata.append(sum(mutants_kept)/10)
+        if len(mutants_kept) == 25:
+            logdata.append(sum(mutants_kept)/25)
             mutants_kept.pop(0)
 
+        aveFace = np.mean([org.genome for org in population], axis=0)
