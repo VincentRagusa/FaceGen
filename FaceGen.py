@@ -60,12 +60,16 @@ def save_truncated_svd(U,S,Vh,cutoff):
 #        plt.show()
 
 
-# def unitTest_displayRSVs(S,Vh,SHAPE):
-#     # show 10 right singlular vectors (scaled up by S)
-#     for RSV in np.dot(np.diag(S),Vh)[:10]:
-#         img = np.reshape(np.array(RSV),SHAPE)
-#         plt.imshow(img)
-#         plt.show()
+def unitTest_RSVs(S,Vh,SHAPE,save=False):
+    # show 10 right singlular vectors (scaled up by S)
+    for i,RSV in enumerate(np.dot(np.diag(S),Vh)[:10]):
+        img = np.reshape(np.array(RSV),SHAPE)
+        plt.imshow(img)
+        if save:
+            plt.savefig("UNIT_TEST_RSV_{}.png".format(i))
+            plt.close()
+        else:
+            plt.show()
 
 
 class Index:
@@ -177,14 +181,15 @@ def loadPopulation():
     return population
 
 
-if __name__ == "__main__":
-    # PARAMETERS -------------------------------------------------------------------------------
-    DATA_PATH = "./Data/thumbnails128x128-20210308T030619Z-001/thumbnails128x128"
-    POP_SIZE = 100
-    GENOME_LENGTH = 500
-    MUTATION_RATE = 0.01 #per site rate
-    # ------------------------------------------------------------------------------------------
+# PARAMETERS -------------------------------------------------------------------------------
+# ---------- loaded in the global scope so they can be imported by other programs ----------
+DATA_PATH = "./Data/thumbnails128x128-20210308T030619Z-001/thumbnails128x128"
+POP_SIZE = 100
+GENOME_LENGTH = 500
+MUTATION_RATE = 0.01 #per site rate
+# ------------------------------------------------------------------------------------------
 
+if __name__ == "__main__":
     U, S, Vh, SHAPE = loadData(DATA_PATH,GENOME_LENGTH)
     population = loadPopulation()
 
