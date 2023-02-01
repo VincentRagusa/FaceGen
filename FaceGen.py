@@ -94,7 +94,7 @@ def unitTest_RSVs(S,Vh,SHAPE,save=False):
 class Org:
     def __init__(self):
         global GENOME_LENGTH
-        self.genome = [random.uniform(-1,1)/50 for _ in range(GENOME_LENGTH)]
+        self.genome = [random.uniform(-1,1)/50 for _ in range(GENOME_LENGTH)] # [-0.02, 0.02]
 
     def make_mutated_copy(self):
         global GENOME_LENGTH,MUTATION_RATE
@@ -108,24 +108,26 @@ class Org:
 
 def recombine(org1, org2):
     child = Org()
-    #single cut crossover
-    cut = random.randint(0,GENOME_LENGTH-1)
-    child.genome = copy.deepcopy(org1.genome[:cut]) + copy.deepcopy(org2.genome[cut:])
 
-    #all-sites crossover
-    # child.genome = []
-    # for site in range(GENOME_LENGTH):
-    #     if random.random() <= 0.5:
-    #         child.genome.append(org1.genome[site])
-    #     else:
-    #         child.genome.append(org2.genome[site])
+    if random.random() <= 0.75:
+        #single cut crossover
+        cut = random.randint(0,GENOME_LENGTH-1)
+        child.genome = copy.deepcopy(org1.genome[:cut]) + copy.deepcopy(org2.genome[cut:])
+    else:
+        #all-sites crossover
+        child.genome = []
+        for site in range(GENOME_LENGTH):
+            if random.random() <= 0.5:
+                child.genome.append(org1.genome[site])
+            else:
+                child.genome.append(org2.genome[site])
 
-    
     return child
 
 
 def prepareNextChoice():
-    global mutants_kept, logdata,selectionIndex, shuffleBit, testGroup, plt1, plt2, plt3, plt4, axs, fig, population
+    global mutants_kept, logdata, selectionIndex, shuffleBit, testGroup, plt1, plt2, plt3, plt4, axs, fig, population
+
     #reduce the keep log to only the most recent 25 events
     if len(mutants_kept) > 20:
         mutants_kept.pop(0)
@@ -138,26 +140,27 @@ def prepareNextChoice():
     #update the average face image given the new population
     aveFace = np.mean([org.genome for org in population], axis=0)
 
-    # (chooose x, mutate) cross (choose y, mutate) VS (choose z) (mix 2 compare with 3rd)
-    #generate candidate organism
-    newOrg = recombine(random.choices(population,k=1)[0].make_mutated_copy(),random.choices(population,k=1)[0].make_mutated_copy())
-    #select competator
-    selectionIndex = random.randint(0,POP_SIZE-1)
-    testOrg = population[selectionIndex]
-    #make the test blind to the user
-    testGroup = [newOrg,testOrg]
-    shuffleBit = random.randint(0,1)
+    if random.random() <= 0.5:
+        # (chooose x, mutate) cross (choose y, mutate) VS (choose z) (mix 2 compare with 3rd)
+        #generate candidate organism
+        newOrg = recombine(random.choices(population,k=1)[0].make_mutated_copy(),random.choices(population,k=1)[0].make_mutated_copy())
+        #select competator
+        selectionIndex = random.randint(0,POP_SIZE-1)
+        testOrg = population[selectionIndex]
+        #make the test blind to the user
+        testGroup = [newOrg,testOrg]
+        shuffleBit = random.randint(0,1)
     
-
-    #(chooose x, mutate) cross (choose y, mutate) VS (y)   (mix 2 compare with 2nd)
-    # #select competator
-    # selectionIndex = random.randint(0,POP_SIZE-1)
-    # Y = population[selectionIndex]
-    # #generate candidate organism
-    # newOrg = recombine(random.choices(population,k=1)[0].make_mutated_copy(),Y.make_mutated_copy())
-    # #make the test blind to the user
-    # testGroup = [newOrg,Y]
-    # shuffle = random.randint(0,1)
+    else:
+        #(chooose x, mutate) cross (choose y, mutate) VS (y)   (mix 2 compare with 2nd)
+        # #select competator
+        selectionIndex = random.randint(0,POP_SIZE-1)
+        oldOrg = population[selectionIndex]
+        #generate candidate organism
+        newOrg = recombine(random.choices(population,k=1)[0].make_mutated_copy(),oldOrg.make_mutated_copy())
+        #make the test blind to the user
+        testGroup = [newOrg,oldOrg]
+        shuffleBit = random.randint(0,1)
     
 
 
@@ -167,7 +170,7 @@ def prepareNextChoice():
     imgAve = np.reshape(np.array(np.clip(np.dot(aveFace, np.dot(np.diag(S[:GENOME_LENGTH]),Vh[:GENOME_LENGTH,:])),0,1)),SHAPE)
 
     plt1.set_ydata(logdata)
-    axs[0][0].set_ylim( -0.05 , max(logdata)+0.05 ) #fixes bugged automatic limit changing in pyplot
+    axs[0][0].set_ylim( min(logdata)-0.05 , max(logdata)+0.05 ) #fixes bugged automatic limit changing in pyplot
     plt2.set_data(imgAve)
     plt3.set_data(img1)
     plt4.set_data(img2)
@@ -176,7 +179,7 @@ def prepareNextChoice():
 
 
 def on_press(event):
-    global mutants_kept,selectionIndex, shuffleBit, population,testGroup
+    global mutants_kept, selectionIndex, shuffleBit, population, testGroup
 
     if event.key == "left":
         population[selectionIndex] = testGroup[shuffleBit]

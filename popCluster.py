@@ -97,7 +97,7 @@ def compute(X,k):
     return C,S
 
 if __name__ == "__main__":
-    NUM_CLUSTERS = 4
+    NUM_CLUSTERS = 10
     U, S, Vh, SHAPE = loadData(DATA_PATH,GENOME_LENGTH)
     population = loadPopulation()
 
@@ -107,13 +107,17 @@ if __name__ == "__main__":
         # if np.mean(np.mean( [sum([1 for j in range(POP_SIZE-NUM_CLUSTERS) if assignments[j]["c"] == i]) + 1 for i in range(NUM_CLUSTERS)] ) ) >= 0.8*(1/NUM_CLUSTERS)*POP_SIZE:
         #     break
 
-    f, axarr = plt.subplots(1,NUM_CLUSTERS)
-    f.set_size_inches((5*NUM_CLUSTERS,5))
+    PLOT_ROWS = 2
+    f, axarr = plt.subplots(PLOT_ROWS,NUM_CLUSTERS//PLOT_ROWS)
+    f.set_size_inches((5*NUM_CLUSTERS/PLOT_ROWS,5*PLOT_ROWS))
 
     for i in range(NUM_CLUSTERS):
+        m = i % (NUM_CLUSTERS//PLOT_ROWS)
+        n = (i-m)//(NUM_CLUSTERS//PLOT_ROWS)
+        print(i,n,m)
         clusterSet = [population[assignments[j]["i"]].genome for j in range(POP_SIZE-NUM_CLUSTERS) if assignments[j]["c"] == i] + [population[centroids[i]].genome]
         aveFace = np.mean(clusterSet, axis=0)
         img = np.reshape(np.array(np.clip(np.dot(aveFace, np.dot(np.diag(S[:GENOME_LENGTH]),Vh[:GENOME_LENGTH,:])),0,1)),SHAPE)
-        axarr[i].imshow(img)
-        axarr[i].set_title(len(clusterSet))
+        axarr[n][m].imshow(img)
+        axarr[n][m].set_title(len(clusterSet))
     plt.show()
