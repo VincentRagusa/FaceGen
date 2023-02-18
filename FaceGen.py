@@ -41,9 +41,11 @@ def loadData(rawDataPath,cutoff):
 
 
 def loadPopulation():
-    global SHAPE, GENOME_LENGTH
+    global SHAPE, GENOME_LENGTH, POP_SIZE
     if path.exists("./population.p"):
         population = load(open("population.p","rb"))
+        if len(population) != POP_SIZE:
+            print("WARNING: Population of size", len(population), "loaded, but parameter POP_SIZE is",POP_SIZE, ".")
     else:
         population = [Org() for _ in range(POP_SIZE)]
     return population
@@ -125,14 +127,16 @@ def recombine(org1, org2):
     return child
 
 
-def prepareNextChoice():
+def prepareNextChoice(choseMutant):
     global mutants_kept, logdata, selectionIndex, shuffleBit, testGroup, plt1, plt2, plt3, plt4, axs, fig, population
 
-    #reduce the keep log to only the most recent 25 events
-    if len(mutants_kept) > 20:
-        mutants_kept.pop(0)
+    if choseMutant:
+        selectionIndex = (selectionIndex + 1) % POP_SIZE
+        population[selectionIndex] = testGroup[choseMutant]
+        mutants_kept += 1
+
     #append new average to average log
-    logdata.append(mean(mutants_kept))
+    logdata.append(mutants_kept)
     #create a sliding window effect (fixes annoying bug (feature?) in matplotlib) https://github.com/matplotlib/matplotlib/issues/8516/
     logdata.pop(0)
     
@@ -140,29 +144,16 @@ def prepareNextChoice():
     #update the average face image given the new population
     aveFace = np.mean([org.genome for org in population], axis=0)
 
-    if random.random() <= 0.5:
-        # (chooose x, mutate) cross (choose y, mutate) VS (choose z) (mix 2 compare with 3rd)
-        #generate candidate organism
-        newOrg = recombine(random.choices(population,k=1)[0].make_mutated_copy(),random.choices(population,k=1)[0].make_mutated_copy())
-        #select competator
-        selectionIndex = random.randint(0,POP_SIZE-1)
-        testOrg = population[selectionIndex]
-        #make the test blind to the user
-        testGroup = [newOrg,testOrg]
-        shuffleBit = random.randint(0,1)
-    
-    else:
-        #(chooose x, mutate) cross (choose y, mutate) VS (y)   (mix 2 compare with 2nd)
-        # #select competator
-        selectionIndex = random.randint(0,POP_SIZE-1)
-        oldOrg = population[selectionIndex]
-        #generate candidate organism
-        newOrg = recombine(random.choices(population,k=1)[0].make_mutated_copy(),oldOrg.make_mutated_copy())
-        #make the test blind to the user
-        testGroup = [newOrg,oldOrg]
-        shuffleBit = random.randint(0,1)
-    
 
+    #(chooose x, mutate) cross (choose y, mutate) VS (y)   (mix 2 compare with 2nd)
+    # #select competator
+    oldOrg = population[selectionIndex]
+    #generate candidate organism
+    newOrg = recombine(random.choices(population,k=1)[0].make_mutated_copy(),oldOrg.make_mutated_copy())
+    #make the test blind to the user
+    testGroup = [oldOrg,newOrg]
+    shuffleBit = random.randint(0,1)
+    
 
     #refresh the display and await input
     img1 = np.reshape(np.array(np.clip(np.dot(testGroup[shuffleBit].genome, np.dot(np.diag(S[:GENOME_LENGTH]),Vh[:GENOME_LENGTH,:])),0,1)),SHAPE) #TODO: the need to manually truncate is obsolete
@@ -170,7 +161,10 @@ def prepareNextChoice():
     imgAve = np.reshape(np.array(np.clip(np.dot(aveFace, np.dot(np.diag(S[:GENOME_LENGTH]),Vh[:GENOME_LENGTH,:])),0,1)),SHAPE)
 
     plt1.set_ydata(logdata)
-    axs[0][0].set_ylim( min(logdata)-0.05 , max(logdata)+0.05 ) #fixes bugged automatic limit changing in pyplot
+    maxLD = max(logdata)
+    minLD = min(logdata)
+    rngLD = maxLD - minLD
+    axs[0][0].set_ylim( minLD-0.05*rngLD , maxLD+0.05*rngLD ) #fixes bugged automatic limit changing in pyplot
     plt2.set_data(imgAve)
     plt3.set_data(img1)
     plt4.set_data(img2)
@@ -179,17 +173,13 @@ def prepareNextChoice():
 
 
 def on_press(event):
-    global mutants_kept, selectionIndex, shuffleBit, population, testGroup
+    global shuffleBit, population
 
     if event.key == "left":
-        population[selectionIndex] = testGroup[shuffleBit]
-        mutants_kept.append(1-shuffleBit) #+1 if shuffle false
-        prepareNextChoice()
+        prepareNextChoice(shuffleBit)
 
     elif event.key == "right":
-        population[selectionIndex] = testGroup[1-shuffleBit]
-        mutants_kept.append(shuffleBit) #+1 if shuffle 1
-        prepareNextChoice()
+        prepareNextChoice(1-shuffleBit)
 
     elif event.key == "z":
         print("Saving population to disk...")
@@ -216,7 +206,7 @@ def on_press(event):
 # PARAMETERS -------------------------------------------------------------------------------
 # ---------- loaded in the global scope so they can be imported by other programs ----------
 DATA_PATH = "./Data/thumbnails128x128-20210308T030619Z-001/thumbnails128x128"
-POP_SIZE = 100
+POP_SIZE = 500
 GENOME_LENGTH = 500
 MUTATION_RATE = 0.01 #per site rate
 # ------------------------------------------------------------------------------------------
@@ -227,31 +217,19 @@ if __name__ == "__main__":
     population = loadPopulation()
 
     #init data logs
-    mutants_kept = []
+    mutants_kept = 0
     logdata = [0 for _ in range(500)]
     aveFace = np.mean([org.genome for org in population], axis=0)
 
 
-    # (chooose x, mutate) cross (choose y, mutate) VS (choose z) (mix 2 compare with 3rd)
-    #generate first candidate organism
-    newOrg = recombine(random.choices(population,k=1)[0].make_mutated_copy(),random.choices(population,k=1)[0].make_mutated_copy())
     #select first competator
-    selectionIndex = random.randint(0,POP_SIZE-1)
-    testOrg = population[selectionIndex]
+    selectionIndex = 0
+    oldOrg = population[selectionIndex]
+    #generate first candidate organism
+    newOrg = recombine(random.choices(population,k=1)[0].make_mutated_copy(),oldOrg.make_mutated_copy())
     #make the test blind to the user
-    testGroup = [newOrg,testOrg]
+    testGroup = [oldOrg,newOrg]
     shuffleBit = random.randint(0,1)
-    
-
-    #(chooose x, mutate) cross (choose y, mutate) VS (y)   (mix 2 compare with 2nd)
-    # #select first competator
-    # selectionIndex = random.randint(0,POP_SIZE-1)
-    # Y = population[selectionIndex]
-    # #generate first candidate organism
-    # newOrg = recombine(random.choices(population,k=1)[0].make_mutated_copy(),Y.make_mutated_copy())
-    # #make the test blind to the user
-    # testGroup = [newOrg,Y]
-    # shuffle = random.randint(0,1)
     
 
 
