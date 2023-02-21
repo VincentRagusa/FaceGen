@@ -41,9 +41,11 @@ def loadData(rawDataPath,cutoff):
 
 
 def loadPopulation():
-    global SHAPE, GENOME_LENGTH
+    global SHAPE, GENOME_LENGTH, POP_SIZE
     if path.exists("./population.p"):
         population = load(open("population.p","rb"))
+        if len(population) != POP_SIZE:
+            print("WARNING: Population of size", len(population), "loaded, but parameter POP_SIZE is",POP_SIZE, ".")
     else:
         population = [Org() for _ in range(POP_SIZE)]
     return population
@@ -216,7 +218,7 @@ def on_press(event):
 # PARAMETERS -------------------------------------------------------------------------------
 # ---------- loaded in the global scope so they can be imported by other programs ----------
 DATA_PATH = "./Data/thumbnails128x128-20210308T030619Z-001/thumbnails128x128"
-POP_SIZE = 100
+POP_SIZE = 50
 GENOME_LENGTH = 500
 MUTATION_RATE = 0.01 #per site rate
 # ------------------------------------------------------------------------------------------
